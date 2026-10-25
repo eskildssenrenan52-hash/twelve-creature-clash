@@ -21,6 +21,7 @@ import {
 import { generateWorld, W, H, TS, T, tileAt, biomeOf, solidAt, BIOME_LIST, hash, type World } from "./world";
 import { BIOME_LEVEL, enemyLevel, levelScale, xpModifier } from "./levels";
 import { buildTiles, drawChar, drawEnemy, drawStatue, drawNode } from "./gfx";
+import { foeTick } from "./foe-play";
 import { BUILDINGS, TREASURES, ROOM, doorOf, createInterior, prepareExploration, canClaimTreasure, type Building } from './exploration';
 import { drawBuildings, drawGroundDetails, drawInterior, drawTreasure } from './scenery';
 import { Audio } from "./audio";
@@ -1064,6 +1065,7 @@ export class Game {
       if (e.boss) { this.updateBoss(e, dt, d, dx, dy); continue; }
       const def = ENEMIES[e.kind];
       const aggro = (def.ranged ? 110 : 90) * (night ? 1.3 : 1);
+      if (foeTick(this, e, dt, d, dx, dy, aggro)) continue;
       const homeD = Math.hypot(e.hx - e.x, e.hy - e.y);
       let mx = 0, my = 0;
       if (d < aggro && homeD < 260 && p.dead <= 0) {
