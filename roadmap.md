@@ -83,3 +83,7 @@
 - [x] Grande Crônica (O): 6 facções, 60 missões principais com escolhas, 3 finais, 2.250 moradores, 2.600 histórias, 9.250 missões, 1.700 cenas.
 - [x] Cutscenes com palco animado (personagens, câmera, efeitos) em todas as cenas.
 - [ ] Testar num celular de verdade.
+# Otimização mobile + novas criaturas (out/2026)
+- [x] Trazer o jogo do zip para um projeto novo e recriar contas no Lovable Cloud.
+- [x] Otimização completa para celular (governador por tempo real de quadro, efeitos em cache, resolução e memória reduzidas, laço à prova de falhas).
+- [x] 12 novas criaturas únicas e animadas com comportamentos próprios.
