@@ -1,3 +1,4 @@
+import { FOES, FOE_KINDS, foesIn, type FoeKind } from "./foes";
 import { FRONTIER, type FrontierBiome } from './frontier';
 import { STORY_BOSSES, STORY_NPCS, STORY_QUESTS, STORY_ITEMS, STORY_RECIPES } from './story';
 import { SIDE_NPCS, SIDE_QUESTS } from './sidequests';
@@ -96,7 +97,7 @@ export const SPIRITS: SpiritDef[] = [
 
 export type EnemyKind = "mushroom" | "goblin" | "sporeling" | "scorpion" | "golem" | "wolf" | "shade"
   | "slime" | "rat" | "bat" | "spider" | "skeleton" | "crow" | "frog" | "crab" | "boar" | "pixie" | "wisp"
-  | "treant" | "mummy" | "gargoyle" | "serpent" | "beetle" | "jelly" | "imp" | "salamander" | "sprite" | "wraith" | "mimic";
+  | "treant" | "mummy" | "gargoyle" | "serpent" | "beetle" | "jelly" | "imp" | "salamander" | "sprite" | "wraith" | "mimic" | FoeKind;
 export interface EnemyDef { kind: EnemyKind; name: string; hp: number; atk: number; def: number; speed: number; xp: number; gold: number; ranged?: boolean; drops: [string, number][]; size: number }
 export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   mushroom: { kind: "mushroom", name: "Cogumelo", hp: 22, atk: 5, def: 0, speed: 22, xp: 8, gold: 3, drops: [["goo", 0.6], ["herb", 0.2], ["potion", 0.08]], size: 7 },
@@ -128,6 +129,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   sprite: { kind: "sprite", name: "Duende do Gelo", hp: 100, atk: 20, def: 4, speed: 46, xp: 50, gold: 17, ranged: true, drops: [["frost_herb", 0.5], ["mana_shard", 0.3], ["ether", 0.15]], size: 7 },
   wraith: { kind: "wraith", name: "Aparição Lamuriante", hp: 150, atk: 27, def: 5, speed: 36, xp: 72, gold: 28, ranged: true, drops: [["mana_shard", 0.6], ["crystal_ore", 0.25], ["elixir", 0.03]], size: 8 },
   mimic: { kind: "mimic", name: "Baú Falso", hp: 180, atk: 26, def: 8, speed: 10, xp: 80, gold: 60, drops: [["crystal_ore", 0.4], ["hi_potion", 0.3], ["elixir", 0.05]], size: 8 },
+  ...(Object.fromEntries(FOE_KINDS.map((k) => { const f = FOES[k]; return [k, { kind: k, name: f.name, hp: f.hp, atk: f.atk, def: f.def, speed: f.speed, xp: f.xp, gold: f.gold, ranged: f.ranged, drops: f.drops, size: f.size }]; })) as Record<FoeKind, EnemyDef>),
 };
 
 export type Biome = FrontierBiome | "plains" | "forest" | "desert" | "cave" | "mountain" | "autumn" | "swamp" | "coast" | "jungle" | "volcanic" | "mushroom" | "meadow" | "ruins";
@@ -140,7 +142,7 @@ export const BIOME_NAMES: Record<Biome, string> = {
   cave: "Cavernas de Cristais de Mana",
   mountain: "Picos da Montanha Sagrada",
 };
-export const BIOME_ENEMIES: Record<Biome, EnemyKind[]> = {
+const BASE_BIOME_ENEMIES: Record<Biome, EnemyKind[]> = {
   ...Object.fromEntries(Object.entries(FRONTIER).map(([id,d])=>[id,[...d.enemies]])) as Record<FrontierBiome,EnemyKind[]>,
   autumn: ["goblin", "wolf", "crow", "boar"], swamp: ["sporeling", "shade", "frog", "wisp", "jelly"], coast: ["scorpion", "goblin", "crab", "serpent", "jelly"], jungle: ["sporeling", "goblin", "treant", "frog", "spider"], volcanic: ["golem", "shade", "imp", "salamander", "beetle"], mushroom: ["mushroom", "sporeling", "pixie", "slime"], meadow: ["mushroom", "goblin", "slime", "boar"], ruins: ["golem", "shade", "skeleton", "gargoyle", "wraith", "mimic"],
   plains: ["mushroom", "mushroom", "goblin", "slime", "rat"],
@@ -149,6 +151,10 @@ export const BIOME_ENEMIES: Record<Biome, EnemyKind[]> = {
   cave: ["golem", "shade", "shade", "bat", "mimic", "wraith"],
   mountain: ["wolf", "wolf", "golem", "sprite", "gargoyle"],
 };
+/** Criaturas de cada bioma: as originais mais as novas (foes.ts), sem remover nenhuma. */
+export const BIOME_ENEMIES: Record<Biome, EnemyKind[]> = Object.fromEntries(
+  (Object.entries(BASE_BIOME_ENEMIES) as [Biome, EnemyKind[]][]).map(([b, list]) => [b, [...list, ...foesIn(b)]]),
+) as Record<Biome, EnemyKind[]>;
 
 export interface BossDef { id: string; name: string; biome: Biome; tx: number; ty: number; hp: number; atk: number; xp: number; gold: number; color: string; minion: EnemyKind; reward: string[]; spirit?: SpiritId }
 export const BOSSES: BossDef[] = [

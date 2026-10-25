@@ -1,4 +1,5 @@
 import type { Biome, EnemyKind } from './data';
+import { FOES, FOE_KINDS } from './foes';
 
 /** Fixed recommended level of every biome (no randomness). */
 export const BIOME_LEVEL: Record<Biome, number> = {
@@ -13,7 +14,8 @@ export const MONSTER_LEVEL: Record<EnemyKind, number> = {
   slime: 0, rat: 0, crow: 1, frog: 1, pixie: 2, jelly: 2, spider: 2, boar: 2, crab: 2, bat: 2,
   wisp: 3, serpent: 3, imp: 3, sprite: 3, beetle: 3, skeleton: 4, mummy: 4, salamander: 4,
   treant: 5, gargoyle: 5, wraith: 6, mimic: 6,
-};
+  ...Object.fromEntries(FOE_KINDS.map((k) => [k, FOES[k].level])),
+} as Record<EnemyKind, number>;
 
 export const enemyLevel = (biome: Biome, kind: EnemyKind) => BIOME_LEVEL[biome] + MONSTER_LEVEL[kind];
 
