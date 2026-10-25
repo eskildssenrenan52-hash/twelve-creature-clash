@@ -34,65 +34,84 @@ export function cloudShadows(c: Ctx, w: number, h: number, camX: number, camY: n
   c.restore();
 }
 
-/** Poeira dourada / vaga-lumes flutuando em profundidade, com brilho aditivo. */
+const moteDiscs = new Map<string, HTMLCanvasElement>();
+function moteDisc(col: [number, number, number]) {
+  const k = col.join(","); const hit = moteDiscs.get(k); if (hit) return hit;
+  const cv = document.createElement("canvas"); cv.width = cv.height = 32; const x = cv.getContext("2d")!;
+  const g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+  g.addColorStop(0, `rgba(${k},.55)`); g.addColorStop(.35, `rgba(${k},.18)`); g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 32, 32); moteDiscs.set(k, cv); return cv;
+}
+/** Poeira dourada / vaga-lumes flutuando em profundidade, com brilho aditivo (discos pré-renderizados, sem gradiente por quadro). */
 export function lightMotes(c: Ctx, w: number, h: number, t: number, n: number, col: [number, number, number], camX = 0, camY = 0, a = 1) {
-  if (a <= 0.01) return;
-  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "lighter";
+  if (a <= 0.01 || n <= 0) return;
+  const disc = moteDisc(col);
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "lighter"; c.fillStyle = "rgb(255,252,235)";
   for (let i = 0; i < n; i++) {
     const depth = .4 + rnd(i + 7) * .9;
     const x = ((rnd(i) * (w + 80) - camX * depth * .35 + Math.sin(t * .4 + i) * 18 + t * 6 * depth) % (w + 80) + (w + 80)) % (w + 80) - 40;
     const y = ((rnd(i + 3) * (h + 80) - camY * depth * .35 - t * 7 * depth + Math.cos(t * .5 + i * 2) * 10) % (h + 80) + (h + 80)) % (h + 80) - 40;
     const tw = .45 + .55 * Math.sin(t * (1.2 + rnd(i + 11) * 2) + i * 3);
-    const r = 1.2 + depth * 2.6;
-    const g = c.createRadialGradient(x, y, 0, x, y, r * 3);
-    g.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${.55 * tw * a})`); g.addColorStop(.35, `rgba(${col[0]},${col[1]},${col[2]},${.18 * tw * a})`); g.addColorStop(1, "rgba(0,0,0,0)");
-    c.fillStyle = g; c.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
-    c.fillStyle = `rgba(255,252,235,${.8 * tw * a})`; c.fillRect(Math.round(x), Math.round(y), 1, 1);
+    if (tw <= 0) continue;
+    const r = (1.2 + depth * 2.6) * 3;
+    c.globalAlpha = tw * a; c.drawImage(disc, x - r, y - r, r * 2, r * 2);
+    c.globalAlpha = .8 * tw * a; c.fillRect(Math.round(x), Math.round(y), 1, 1);
   }
   c.restore();
 }
 
 /** Bloom largo em duas passadas (realces borrados), mais suave e cinematográfico. */
-export function softBloom(c: Ctx, src: HTMLCanvasElement, w: number, h: number, amt: number) {
+export function softBloom(c: Ctx, src: HTMLCanvasElement, w: number, h: number, amt: number, refresh = true) {
   if (FILTER === null) FILTER = filterOk();
   if (!FILTER || amt <= 0) return;
   const bw = Math.max(1, w >> 3), bh = Math.max(1, h >> 3);
   if (!cache.blur) { cache.blur = document.createElement("canvas"); cache.blurX = cache.blur.getContext("2d"); }
-  if (cache.blur.width !== bw || cache.blur.height !== bh) { cache.blur.width = bw; cache.blur.height = bh; }
+  if (cache.blur.width !== bw || cache.blur.height !== bh) { cache.blur.width = bw; cache.blur.height = bh; refresh = true; }
   const b = cache.blurX; if (!b) return;
-  b.globalCompositeOperation = "copy"; b.imageSmoothingEnabled = true;
-  b.filter = "brightness(.9) contrast(2.2) saturate(1.5) blur(2px)";
-  b.drawImage(src, 0, 0, bw, bh); b.filter = "none";
+  if (refresh) { // recalcula o brilho só de tempos em tempos; nos outros quadros reaproveita
+    b.globalCompositeOperation = "copy"; b.imageSmoothingEnabled = true;
+    b.filter = "brightness(.9) contrast(2.2) saturate(1.5) blur(2px)";
+    b.drawImage(src, 0, 0, bw, bh); b.filter = "none";
+  }
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "screen"; c.globalAlpha = amt; c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
   c.drawImage(cache.blur, 0, 0, w, h); c.restore();
 }
 
-/** Tonalização dividida: sombras puxadas para azul-petróleo, realces para âmbar. */
+const toneC: { w: number; h: number; g: CanvasGradient | null; ctx: Ctx | null } = { w: 0, h: 0, g: null, ctx: null };
+/** Tonalização dividida: sombras puxadas para azul-petróleo, realces para âmbar (gradiente em cache). */
 export function splitTone(c: Ctx, w: number, h: number, warm = .12, cool = .14) {
+  if (toneC.w !== w || toneC.h !== h || toneC.ctx !== c || !toneC.g) {
+    const g = c.createLinearGradient(0, 0, w * .3, h);
+    g.addColorStop(0, "rgb(255,196,120)"); g.addColorStop(1, "rgb(40,80,140)");
+    toneC.w = w; toneC.h = h; toneC.g = g; toneC.ctx = c;
+  }
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
-  c.globalCompositeOperation = "soft-light";
-  const g = c.createLinearGradient(0, 0, w * .3, h);
-  g.addColorStop(0, `rgba(255,196,120,${warm})`); g.addColorStop(1, `rgba(40,80,140,${cool})`);
-  c.fillStyle = g; c.fillRect(0, 0, w, h);
-  c.globalCompositeOperation = "overlay"; c.fillStyle = "rgba(128,128,128,.0)"; // mantém o pipeline estável
+  c.globalCompositeOperation = "soft-light"; c.globalAlpha = Math.max(0, Math.min(1, (warm + cool) / 2));
+  c.fillStyle = toneC.g; c.fillRect(0, 0, w, h);
   c.restore();
 }
 
-/** Halo de luz no canto superior (sol), com reflexos de lente discretos. */
+const lens: { w: number; h: number; cv: HTMLCanvasElement | null } = { w: 0, h: 0, cv: null };
+/** Halo de luz no canto superior (sol), com reflexos de lente discretos — pintado uma vez por tamanho de tela. */
 export function lensGlow(c: Ctx, w: number, h: number, t: number, a: number) {
   if (a <= 0.01) return;
-  const sx = w * .82 + Math.sin(t * .05) * w * .03, sy = -h * .08;
-  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "lighter";
-  const g = c.createRadialGradient(sx, sy, 0, sx, sy, Math.max(w, h) * .7);
-  g.addColorStop(0, `rgba(255,232,180,${.22 * a})`); g.addColorStop(.3, `rgba(255,200,140,${.08 * a})`); g.addColorStop(1, "rgba(0,0,0,0)");
-  c.fillStyle = g; c.fillRect(0, 0, w, h);
-  const cx = w / 2, cy = h / 2;
-  [[.35, 18, "255,220,160"], [.6, 9, "160,220,255"], [1.25, 26, "255,170,220"], [1.6, 12, "200,255,220"]].forEach(([k, r, col]) => {
-    const x = sx + (cx - sx) * (k as number) * 2, y = sy + (cy - sy) * (k as number) * 2, rr = (r as number) * (w / 384);
-    const f = c.createRadialGradient(x, y, 0, x, y, rr);
-    f.addColorStop(0, `rgba(${col},${.07 * a})`); f.addColorStop(.7, `rgba(${col},${.035 * a})`); f.addColorStop(1, "rgba(0,0,0,0)");
-    c.fillStyle = f; c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.fill();
-  });
+  if (!lens.cv || lens.w !== w || lens.h !== h) {
+    const cv = lens.cv ?? document.createElement("canvas"); cv.width = w; cv.height = h; lens.w = w; lens.h = h; lens.cv = cv;
+    const x = cv.getContext("2d")!; x.clearRect(0, 0, w, h); x.globalCompositeOperation = "lighter";
+    const sx = w * .82, sy = -h * .08;
+    const g = x.createRadialGradient(sx, sy, 0, sx, sy, Math.max(w, h) * .7);
+    g.addColorStop(0, "rgba(255,232,180,.22)"); g.addColorStop(.3, "rgba(255,200,140,.08)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2;
+    for (const [k, r, col] of [[.35, 18, "255,220,160"], [.6, 9, "160,220,255"], [1.25, 26, "255,170,220"], [1.6, 12, "200,255,220"]] as const) {
+      const fx = sx + (cx - sx) * k * 2, fy = sy + (cy - sy) * k * 2, rr = r * (w / 384);
+      const f = x.createRadialGradient(fx, fy, 0, fx, fy, rr);
+      f.addColorStop(0, `rgba(${col},.07)`); f.addColorStop(.7, `rgba(${col},.035)`); f.addColorStop(1, "rgba(0,0,0,0)");
+      x.fillStyle = f; x.beginPath(); x.arc(fx, fy, rr, 0, Math.PI * 2); x.fill();
+    }
+  }
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "lighter"; c.globalAlpha = Math.min(1, a);
+  c.drawImage(lens.cv, Math.round(Math.sin(t * .05) * w * .03), 0);
   c.restore();
 }
 
@@ -107,10 +126,13 @@ function grainFrames() {
   return cache.grain;
 }
 
+const grainPats: { ctx: Ctx | null; p: (CanvasPattern | null)[] } = { ctx: null, p: [] };
 /** Grão de filme animado muito sutil. */
 export function filmGrain(c: Ctx, w: number, h: number, t: number, a = .045) {
-  const fr = grainFrames()[Math.floor(t * 24) % 4];
+  const i = Math.floor(t * 24) % 4;
+  if (grainPats.ctx !== c) { grainPats.ctx = c; grainPats.p = grainFrames().map((f) => c.createPattern(f, "repeat")); }
+  const pat = grainPats.p[i];
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "overlay"; c.globalAlpha = a;
-  const pat = c.createPattern(fr, "repeat"); if (pat) { c.fillStyle = pat; c.fillRect(0, 0, w, h); }
+  if (pat) { c.fillStyle = pat; c.fillRect(0, 0, w, h); }
   c.restore();
 }
