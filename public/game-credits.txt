@@ -1,0 +1,15 @@
+Mana Echoes — Legacy expanded edition
+
+Original browser RPG: https://github.com/mitocelestial2008-png/mana-echoes-legacy
+Biome inspiration and selected artwork: Source of Mana / The Mana World contributors
+https://github.com/sourceofmana/sourceofmana
+
+Selected artistic assets licensed under CC BY-SA 4.0:
+https://creativecommons.org/licenses/by-sa/4.0/
+isles/tropical/tree-x3x4.png — Len; contributors Modanung, Reid, Saphy.
+isles/tropical/tree-x3x3.png — Hal9000; contributor Reid.
+tonori/tree-x4.png — Len; contributors Modanung, Reid.
+Sprites are scaled in game; autumn/dark variants are color-filtered adaptations.
+These adaptations remain under CC BY-SA 4.0.
+
+Title illustration generated for this edition; it is not a gameplay screenshot.
