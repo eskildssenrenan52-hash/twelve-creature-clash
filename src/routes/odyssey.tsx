@@ -97,7 +97,7 @@ function Index() {
     const fullChange=()=>setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange',fullChange);
     setHasSave(Game.hasSave());
-    setMapUrl(g.mapDataUrl());
+    const mapT = window.setTimeout(() => setMapUrl(g.mapDataUrl()), 1200);
     g.onMapClick = () => setPanel("map");
     let raf = 0, last = performance.now();
     // Laço protegido: um erro isolado num quadro nunca derruba o jogo, e o governador
@@ -156,7 +156,7 @@ function Index() {
     const vis = () => { if (document.hidden) { g.keys.clear(); g.save(); } }; document.addEventListener("visibilitychange", vis); window.addEventListener("pointerup", () => { for (const k of ["KeyW","KeyA","KeyS","KeyD"]) g.keys.delete(k); });
     const blur = () => g.keys.clear(); window.addEventListener("blur",blur);
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
-    return () => { observer.disconnect();document.removeEventListener('fullscreenchange',fullChange);cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis); clearInterval(iv); window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); g.audio.destroy(); window.removeEventListener("blur",blur); };
+    return () => { observer.disconnect();document.removeEventListener('fullscreenchange',fullChange);cancelAnimationFrame(raf); clearTimeout(mapT); document.removeEventListener("visibilitychange", onVis); clearInterval(iv); window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); g.audio.destroy(); window.removeEventListener("blur",blur); };
   }, []);
 
   const g = gameRef.current;

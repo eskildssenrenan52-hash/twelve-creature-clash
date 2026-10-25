@@ -238,10 +238,14 @@ export class Game {
 
   // ---------- setup ----------
   buildMinimap() {
+    // No celular o minimapa usa meia resolução (1 pixel = 2×2 tiles): 4× menos memória
+    // de imagem, o que evita travamentos/fechamentos do navegador em aparelhos modestos.
+    const S = this.quality.mobile ? 2 : 1, MW = Math.ceil(W / S), MH = Math.ceil(H / S);
+    this.mmScale = S;
     const c = document.createElement("canvas");
-    c.width = W; c.height = H;
+    c.width = MW; c.height = MH;
     const x = c.getContext("2d"); if (!x) return;
-    const img = x.createImageData(W, H);
+    const img = x.createImageData(MW, MH);
     const col: Record<number, [number, number, number]> = {
       [T.GRASS]: [76, 163, 58], [T.FLOWER]: [90, 170, 70], [T.PATH]: [200, 164, 104], [T.WATER]: [42, 106, 208], [T.TREE]: [30, 110, 30],
       [T.SAND]: [230, 200, 122], [T.DUNE]: [210, 180, 100], [T.ROCK]: [110, 110, 120], [T.SNOW]: [238, 244, 255], [T.ICE]: [168, 216, 240],
@@ -253,14 +257,24 @@ export class Game {
     for(const d of Object.values(FRONTIER)){
       const hex=d.base;col[d.ground]=[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];
     }
-    for (let i = 0; i < W * H; i++) {
-      const [r, g, b] = col[this.world.tiles[i]] ?? [0, 0, 0];
-      img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255;
+    const d = img.data;
+    for (let my = 0; my < MH; my++) for (let mx = 0; mx < MW; mx++) {
+      const i = my * MW + mx, rgb = col[this.world.tiles[Math.min(H - 1, my * S) * W + Math.min(W - 1, mx * S)]] ?? [0, 0, 0];
+      d[i * 4] = rgb[0]; d[i * 4 + 1] = rgb[1]; d[i * 4 + 2] = rgb[2]; d[i * 4 + 3] = 255;
     }
     x.putImageData(img, 0, 0);
     this.minimap = c;
   }
-  mapDataUrl() { return this.minimap.toDataURL(); }
+  mmScale = 1;
+  /** Imagem do atlas reduzida (no máx. 960 px de largura): codificar o mapa inteiro travava celulares. */
+  mapDataUrl() {
+    const src = this.minimap; if (!src) return "";
+    const k = Math.min(1, 960 / src.width), c = document.createElement("canvas");
+    c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
+    const x = c.getContext("2d"); if (!x) return "";
+    x.imageSmoothingEnabled = false; x.drawImage(src, 0, 0, c.width, c.height);
+    return c.toDataURL("image/png");
+  }
 
   makeEnemy(kind: EnemyKind, x: number, y: number, level: number): Enemy {
     const d = ENEMIES[kind];
@@ -1543,7 +1557,7 @@ export class Game {
     c.fillStyle = "#d0b060"; c.fillRect(mx - 1, my - 1, mw + 2, 1); c.fillRect(mx - 1, my + mh, mw + 2, 1); c.fillRect(mx - 1, my, 1, mh); c.fillRect(mx + mw, my, 1, mh);
     const ptx = p.x / TS, pty = p.y / TS;
     const sx = Math.max(0, Math.min(W - mw, ptx - mw / 2)), sy = Math.max(0, Math.min(H - mh, pty - mh / 2));
-    c.drawImage(this.minimap, sx, sy, mw, mh, mx, my, mw, mh);
+    { const k = this.mmScale; c.drawImage(this.minimap, sx / k, sy / k, mw / k, mh / k, mx, my, mw, mh); }
     for (const s of STATUES) { const x = s.tx - sx, y = s.ty - sy; if (x >= 0 && y >= 0 && x < mw && y < mh) { c.fillStyle = this.statues.has(s.id) ? "#60f0ff" : "#507080"; c.fillRect(mx + x - 1, my + y - 1, 3, 3); } }
     for (const e of this.enemies) if (e.boss && e.alive) { const x = e.hx / TS - sx, y = e.hy / TS - sy; if (x >= 0 && y >= 0 && x < mw && y < mh) { c.fillStyle = "#ff3030"; c.fillRect(mx + x - 1, my + y - 1, 3, 3); } }
     for (const n of NPCS) { const x = n.tx - sx, y = n.ty - sy; if (x >= 0 && y >= 0 && x < mw && y < mh) { c.fillStyle = "#ffd040"; c.fillRect(mx + x, my + y, 1, 1); } }
