@@ -2,6 +2,8 @@ import { T, TS, hash } from "./world";
 import { FRONTIER } from './frontier';
 import { paintDetailed, TILE_VARIANTS } from './tile-art';
 import type { EnemyKind, Palette, WeaponKind } from "./data";
+import { drawFoe } from "./foe-art";
+import { isFoe } from "./foes";
 
 type Ctx = CanvasRenderingContext2D;
 const px = (c: Ctx, x: number, y: number, w: number, h: number, col: string) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
@@ -435,6 +437,8 @@ export function drawEnemy(c: Ctx, kind: EnemyKind, x: number, y: number, t: numb
       }
       break;
     }
+    default:
+      if (isFoe(kind)) drawFoe(c, kind, t, dir, flash, tint);
   }
   c.restore();
 }
