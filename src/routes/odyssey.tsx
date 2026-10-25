@@ -88,9 +88,13 @@ function Index() {
     const g = new Game(cv);
     gameRef.current = g;
     const resize=()=>{
+      // Resolução interna: lado curto fixo em 270 px (mesma escala de pixel em pé ou deitado)
+      // e lado longo limitado — em pé no celular isso desenha ~3× menos pixels por quadro.
       const r=cv.getBoundingClientRect(),ratio=r.width/Math.max(1,r.height);
-      const width=ratio>=16/9?Math.round(270*ratio):480;
-      const height=ratio>=16/9?270:Math.round(480/ratio);
+      let width:number,height:number;
+      if(ratio>=16/9){height=270;width=Math.min(720,Math.round(270*ratio));}
+      else if(ratio>=1){width=480;height=Math.round(480/ratio);}
+      else{width=270;height=Math.min(640,Math.round(270/ratio));}
       g.resize(width,height);
     };
     const observer=new ResizeObserver(resize);observer.observe(cv);resize();
