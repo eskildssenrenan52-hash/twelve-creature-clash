@@ -191,7 +191,7 @@ export class Game {
   readonly INV_MAX = 48;
 
   constructor(public canvas: HTMLCanvasElement) {
-    const context = canvas.getContext("2d", { desynchronized: true });
+    const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!context) throw new Error("Canvas indisponível");
     this.ctx = context;
     this.ctx.imageSmoothingEnabled = false;
@@ -320,6 +320,7 @@ export class Game {
   toast(text: string, color = "#ffe9a0") { this.toasts.push({ text, t: 4, color }); if (this.toasts.length > 5) this.toasts.shift(); }
   float(x: number, y: number, text: string, color: string) { this.texts.push({ x, y, text, color, life: 1 }); }
   burst(x: number, y: number, color: string, n = 10, speed = 60, size = 2, grav = 0) {
+    n = Math.min(n, Math.max(0, this.quality.maxParticles() - this.parts.length));
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, s = speed * (0.3 + Math.random() * 0.7);
       this.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5 + Math.random() * 0.4, max: 0.9, color, size, grav });
@@ -1029,7 +1030,7 @@ export class Game {
   }
 
   updateEnemies(dt: number) {
-    const p = this.p;
+    const p = this.p, night = this.darkness() > 0.3;
     for (const e of this.enemies) {
       if (!e.alive) {
         if (e.respawn > 0) {
@@ -1048,7 +1049,6 @@ export class Game {
       if (Math.abs(e.kbx) + Math.abs(e.kby) > 1) { this.moveBody(e, e.kbx * dt, e.kby * dt); e.kbx *= Math.exp(-10*dt); e.kby *= Math.exp(-10*dt); }
       if (e.boss) { this.updateBoss(e, dt, d, dx, dy); continue; }
       const def = ENEMIES[e.kind];
-      const night = this.darkness() > 0.3;
       const aggro = (def.ranged ? 110 : 90) * (night ? 1.3 : 1);
       const homeD = Math.hypot(e.hx - e.x, e.hy - e.y);
       let mx = 0, my = 0;
@@ -1409,11 +1409,14 @@ export class Game {
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "lighter";
     for (let i = 0; i < 5; i++) {
       const x0 = ((i * 0.27 + this.clock * 0.006 + this.cam.x / (W * TS) * 40) % 1.5 - 0.25) * w, bw = w * (0.05 + (i % 3) * 0.025);
-      const g = c.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0, `rgba(255,236,170,${0.07 * k})`); g.addColorStop(1, "rgba(255,236,170,0)");
-      c.fillStyle = g; c.beginPath(); c.moveTo(x0, 0); c.lineTo(x0 + bw, 0); c.lineTo(x0 + bw - slant, h); c.lineTo(x0 - slant, h); c.closePath(); c.fill();
+      c.globalAlpha = k; c.fillStyle = this.rayGradient(c, h); c.beginPath(); c.moveTo(x0, 0); c.lineTo(x0 + bw, 0); c.lineTo(x0 + bw - slant, h); c.lineTo(x0 - slant, h); c.closePath(); c.fill();
     }
     c.restore();
+  }
+  private rayG: CanvasGradient | null = null; private rayH = 0;
+  private rayGradient(c: CanvasRenderingContext2D, h: number) {
+    if (!this.rayG || this.rayH !== h) { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(255,236,170,0.07)"); g.addColorStop(1, "rgba(255,236,170,0)"); this.rayG = g; this.rayH = h; }
+    return this.rayG;
   }
   gradeTarget(): [number, number, number, number] {
     if (this.interior) return [255, 220, 170, 0.1];
@@ -1428,17 +1431,17 @@ export class Game {
     gr.r += (t[0] - gr.r) * k; gr.g += (t[1] - gr.g) * k; gr.b += (t[2] - gr.b) * k; gr.a += (t[3] - gr.a) * k; this.gradeInit = true;
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
     if (gr.a > 0.01) { c.globalCompositeOperation = "soft-light"; c.fillStyle = `rgba(${gr.r | 0},${gr.g | 0},${gr.b | 0},${gr.a})`; c.fillRect(0, 0, w, h); }
-    if (this.quality.heavyFx()) this.bloomOk = "filter" in c;
-    if (this.bloomOk && this.bloomC && !this.quality.heavyFx()) { c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.14 + dark * 0.14; c.imageSmoothingEnabled = true; c.drawImage(this.bloomC, 0, 0, w, h); c.globalAlpha = 1; }
-    else if (this.bloomOk) { // bloom barato: reduz 4x com realce de contraste e soma de volta suavizado
+    const lvl = this.quality.level, refresh = this.quality.heavyFx();
+    if (this.bloomOk === false && refresh) this.bloomOk = "filter" in c;
+    if (this.bloomOk && lvl >= 2) { // bloom barato: reduz 4x com realce de contraste; recalculado a cada poucos quadros
       const bw = Math.max(1, w >> 2), bh = Math.max(1, h >> 2);
       if (!this.bloomC) { this.bloomC = document.createElement("canvas"); this.bloomX = this.bloomC.getContext("2d"); }
-      if (this.bloomC.width !== bw || this.bloomC.height !== bh) { this.bloomC.width = bw; this.bloomC.height = bh; }
+      let fresh = refresh;
+      if (this.bloomC.width !== bw || this.bloomC.height !== bh) { this.bloomC.width = bw; this.bloomC.height = bh; fresh = true; }
       const b = this.bloomX;
       if (b) {
-        b.globalCompositeOperation = "copy"; b.imageSmoothingEnabled = true; b.filter = "brightness(1.05) contrast(1.7) saturate(1.25)";
-        b.drawImage(this.canvas, 0, 0, bw, bh); b.filter = "none";
-        c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.14 + dark * 0.14; c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
+        if (fresh) { b.globalCompositeOperation = "copy"; b.imageSmoothingEnabled = true; b.filter = "brightness(1.05) contrast(1.7) saturate(1.25)"; b.drawImage(this.canvas, 0, 0, bw, bh); b.filter = "none"; }
+        c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.14 + dark * 0.14; c.imageSmoothingEnabled = true;
         c.drawImage(this.bloomC, 0, 0, w, h); c.globalAlpha = 1;
       }
     }
@@ -1452,16 +1455,17 @@ export class Game {
     }
     c.restore();
     // Camada cinematográfica: nuvens, luz dourada, bloom largo, tonalização e grão.
-    const heavy = this.quality.heavyFx(), outdoor = !this.interior && !this.depth && this.biome !== "cave";
-    if (outdoor) cloudShadows(c, w, h, this.cam.x, this.cam.y, this.clock, (1 - dark) * (this.raining ? 1.3 : 1));
-    if (!heavy) softBloom(c, this.canvas, w, h, 0.18 + dark * 0.12);
-    splitTone(c, w, h, outdoor ? 0.16 * (1 - dark) : 0.08, 0.12 + dark * 0.1);
+    // Nível 2: tudo. Nível 1 (celulares): sem filtros de desfoque nem grão, o resto em cache. Nível 0: só o essencial.
+    const outdoor = !this.interior && !this.depth && this.biome !== "cave";
+    if (outdoor && lvl >= 1) cloudShadows(c, w, h, this.cam.x, this.cam.y, this.clock, (1 - dark) * (this.raining ? 1.3 : 1));
+    if (lvl >= 2) softBloom(c, this.canvas, w, h, 0.18 + dark * 0.12, refresh);
+    if (lvl >= 1) splitTone(c, w, h, outdoor ? 0.16 * (1 - dark) : 0.08, 0.12 + dark * 0.1);
     if (outdoor && !this.raining) lensGlow(c, w, h, this.clock, Math.max(0, 1 - dark * 2.5));
-    lightMotes(c, w, h, this.clock, heavy ? 10 : 26, dark > 0.4 || this.depth ? [170, 255, 160] : [255, 222, 150], this.cam.x, this.cam.y, 0.55 + dark * 0.6);
+    lightMotes(c, w, h, this.clock, lvl >= 2 ? 26 : lvl === 1 ? 14 : 6, dark > 0.4 || this.depth ? [170, 255, 160] : [255, 222, 150], this.cam.x, this.cam.y, 0.55 + dark * 0.6);
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalAlpha = 0.55 + dark * 0.35; c.drawImage(this.vignetteC, 0, 0);
     c.restore();
-    if (!heavy) filmGrain(c, w, h, this.clock, 0.035);
+    if (lvl >= 2) filmGrain(c, w, h, this.clock, 0.035);
   }
   ambientParticles() {
     const cfg = AMBIENT[this.biome]; if (!cfg) return;
