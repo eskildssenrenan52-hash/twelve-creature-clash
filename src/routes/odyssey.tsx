@@ -100,13 +100,26 @@ function Index() {
     setMapUrl(g.mapDataUrl());
     g.onMapClick = () => setPanel("map");
     let raf = 0, last = performance.now();
+    // Laço protegido: um erro isolado num quadro nunca derruba o jogo, e o governador
+    // de qualidade mede o intervalo real entre quadros (inclui GPU — o gargalo no celular).
+    let errors = 0;
     const loop = (t: number) => {
-      const dt = Math.min(0.05, (t - last) / 1000); last = t;
-      g.paused = panelRef.current !== null;
-      g.update(dt);
-      if (g.quality.shouldRender()) { const t0 = performance.now(); g.render(); g.quality.sample(performance.now() - t0); }
       raf = requestAnimationFrame(loop);
+      const raw = t - last; last = t;
+      if (document.hidden) return;
+      const dt = Math.min(0.05, Math.max(0, raw) / 1000);
+      try {
+        g.paused = panelRef.current !== null;
+        g.update(dt);
+        if (g.quality.shouldRender()) g.render();
+        if (raw < 250) g.quality.sample(raw);
+        errors = 0;
+      } catch (err) {
+        if (++errors <= 3) console.error(err);
+      }
     };
+    const onVis = () => { last = performance.now(); };
+    document.addEventListener("visibilitychange", onVis);
     raf = requestAnimationFrame(loop);
     if (import.meta.env.DEV) (window as unknown as { __game?: unknown }).__game = g;
     // O painel do jogo atualiza menos vezes em aparelhos fracos (a tela do jogo segue fluida).
