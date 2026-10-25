@@ -78,16 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Golden Arrow Odyssey — A Crônica do Cântico Partido" },
+      { name: "description", content: "Uma aventura de Mana: exploração, magia e um lugar para chamar de lar." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Golden Arrow Odyssey" },
+      { property: "og:description", content: "Explore um mundo vivo de Mana." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap" },
       {
         rel: "stylesheet",
         href: appCss,
