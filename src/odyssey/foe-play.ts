@@ -27,7 +27,7 @@ export function foeTick(g: Game, e: Enemy, dt: number, d: number, dx: number, dy
     const base = f.trait === 'spiral' ? e.t : Math.atan2(dy, dx), n = f.shot.n;
     for (let i = 0; i < n; i++) {
       const a = f.trait === 'spiral' ? base + i * f.shot.spread : base + (i - (n - 1) / 2) * f.shot.spread;
-      g.projs.push({ x: e.x, y: e.y - 10, vx: Math.cos(a) * f.shot.speed, vy: Math.sin(a) * f.shot.speed, life: 1.7, dmg: e.atk, from: 'e', kind: 'spore', r: 3, color: f.shot.color, slow: f.shot.slow });
+      g.projs.push({ x: e.x, y: e.y - 10, vx: Math.cos(a) * f.shot.speed, vy: Math.sin(a) * f.shot.speed, life: 1.7, dmg: e.atk, from: 'e', kind: 'spore', r: 3, color: f.shot.color, ...(f.shot.slow ? { slow: true } : {}) });
     }
   }
 
