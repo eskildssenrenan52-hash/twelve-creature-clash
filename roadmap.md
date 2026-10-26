@@ -87,3 +87,8 @@
 - [x] Trazer o jogo do zip para um projeto novo e recriar contas no Lovable Cloud.
 - [x] Otimização completa para celular (governador por tempo real de quadro, efeitos em cache, resolução e memória reduzidas, laço à prova de falhas).
 - [x] 12 novas criaturas únicas e animadas com comportamentos próprios.
+
+# Aplicativo Android para download
+- [x] Empacotar o jogo publicado em um APK assinado para instalação direta.
+- [x] Verificar assinatura, integridade e abertura do jogo publicado em navegador mobile, com continuação após recarregar; entregar o APK online.
+- [ ] Validar instalação e execução em Android real (depende de um aparelho; não há dispositivo Android ou emulador disponível neste ambiente).
