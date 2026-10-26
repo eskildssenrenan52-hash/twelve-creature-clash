@@ -38,3 +38,4 @@
 - Internal canvas resolution keeps the short side at 270 px with a capped long side, so portrait phones draw ~3× fewer pixels; the minimap is half resolution on mobile and the atlas image is a ≤960 px downscale to avoid memory crashes.
 - The game loop wraps update/render in try/catch so a single bad frame never stops the game.
 - New world creatures live in src/odyssey/foes.ts (pure data, no value imports, merged into ENEMIES/BIOME_ENEMIES/MONSTER_LEVEL), drawn by foe-art.ts via drawEnemy's default branch and driven by traits in foe-play.ts; original enemy pools stay untouched.
+- The downloadable Android prototype is an online, HTTPS-origin-restricted WebView wrapper opening guest gameplay directly; keep browser saves inside its app storage and do not promise native OAuth, offline play, or Play Store release signing.

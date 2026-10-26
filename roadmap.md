@@ -89,5 +89,6 @@
 - [x] 12 novas criaturas únicas e animadas com comportamentos próprios.
 
 # Aplicativo Android para download
-- [ ] Empacotar o jogo publicado em um APK assinado para instalação direta.
-- [ ] Verificar o arquivo e a abertura do jogo; entregar com limitações claras.
+- [x] Empacotar o jogo publicado em um APK assinado para instalação direta.
+- [x] Verificar assinatura, integridade e abertura do jogo publicado em navegador mobile, com continuação após recarregar; entregar o APK online.
+- [ ] Validar instalação e execução em Android real (depende de um aparelho; não há dispositivo Android ou emulador disponível neste ambiente).
